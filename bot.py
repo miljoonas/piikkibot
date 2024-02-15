@@ -24,6 +24,7 @@ import django
 import decimal
 
 import config
+import TOS
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'askipiikkibot.settings')
 django.setup()
@@ -34,18 +35,28 @@ BEGINNING, ADD, REDIRECT, UNDO = range(4)
 balance_keywords = ["Show balance", "Add balance", "Cancel"]
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  await update.message.reply_text('Welcome to ASki Piikkibot \ntype /help to get started')
+  await update.message.reply_text(("Welcome to *ASki Piikkibot*! \n\n"
+    "The bot has the following commands:\n\n"
+    "*/register*\n Register as a bot user before gaining access to it's features.\n\n"
+    "*/prices*\n Prints a list of the products and their prices.\n\n"
+    "*/store*\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
+    "*/balance*\n View and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
+    "*/undo*\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
+    ).format('https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await update.message.reply_text((
     "ASki Piikkibot has the following commands:\n\n"
-    "/register\n Register as a bot user before gaining access to it's features.\n\n"
-    "/prices\n Prints a list of the products and their prices.\n\n"
-    "/store\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
-    "/balance\nView and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
-    "/undo\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
+    "*/register*\n Register as a bot user before gaining access to it's features.\n\n"
+    "*/prices*\n Prints a list of the products and their prices.\n\n"
+    "*/store*\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
+    "*/balance*\n View and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
+    "*/undo*\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
     ).format('https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
+
+async def termsofservice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  await update.message.reply_text((TOS.terms_of_service), parse_mode="MARKDOWN")
 
 
 async def is_registered(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -110,7 +121,7 @@ async def button_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
   
   query = update.callback_query
   if query.data == "Back":
-    await query.edit_message_text(text="Interrupted")
+    await query.edit_message_text(text="Operation cancelled")
     return
 
   user = update.effective_user
@@ -157,6 +168,7 @@ async def redirect(update: Update, context:ContextTypes.DEFAULT_TYPE):
     )
     return ADD
   if update.effective_message.text == balance_keywords[2]:
+    await update.message.reply_text("Operation cancelled", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 async def add_money(update: Update, context:ContextTypes.DEFAULT_TYPE):
@@ -249,13 +261,14 @@ async def undo_execute(update: Update, context: ContextTypes.DEFAULT_TYPE):
   return ConversationHandler.END
 
 
+
 if __name__ == '__main__':
   app = Application.builder().token(config.TOKEN).build()
 
   conv_handler = ConversationHandler(
     entry_points=[CommandHandler("balance", balance, filters.ChatType.PRIVATE)],
     states={
-      BEGINNING: [MessageHandler(filters.TEXT, balance)],
+      BEGINNING: [MessageHandler(filters.TEXT & ~filters.COMMAND, balance)],
       REDIRECT: [MessageHandler(filters.Regex("^({}|{})$".format(balance_keywords[1], balance_keywords[2])), redirect)],
       ADD: [MessageHandler(filters.TEXT, add_money)]
     },
@@ -275,6 +288,8 @@ if __name__ == '__main__':
   app.add_handler(CommandHandler('prices', prices_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('register', register_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('store', store, filters.ChatType.PRIVATE))
+  app.add_handler(CommandHandler('tos', termsofservice, filters.ChatType.PRIVATE))
+
 
   
   app.add_handler(CallbackQueryHandler(button_response))
