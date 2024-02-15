@@ -1,4 +1,3 @@
-from typing import Final
 from telegram import (
   Update, 
   ReplyKeyboardMarkup, 
@@ -35,12 +34,7 @@ BEGINNING, ADD, REDIRECT, UNDO = range(4)
 balance_keywords = ["Show balance", "Add balance", "Cancel"]
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-  # reply_keyboard = [
-  #   ["/prices"],
-  #   ["/help"],
-  # ]
   await update.message.reply_text('Welcome to ASki Piikkibot \ntype /help to get started')
-  # await update.message.reply_text('Starting bot... type /help to get started', reply_markup=ReplyKeyboardMarkup(reply_keyboard, ))
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -79,7 +73,6 @@ async def register_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(user_exists)
     await update.message.reply_text("You have already registered")
   except TelegramUser.DoesNotExist:
-    # print("Creating a new user")
     name = ""
     if user.first_name and user.last_name:
       name = "{} {}".format(user.first_name, user.last_name)
@@ -170,20 +163,21 @@ async def add_money(update: Update, context:ContextTypes.DEFAULT_TYPE):
   amount = 0
   try:
     amount = decimal.Decimal(update.message.text.replace(",", "."))
-    if amount < 0:
+    if amount < 0 or amount > 1000:
       raise ValueError
   except ValueError:
+    await update.message.reply_text("Invalid value. Operation cancelled.")
+    return ConversationHandler.END
+  except decimal.InvalidOperation:
     await update.message.reply_text("Invalid value. Operation cancelled.")
     return ConversationHandler.END
   user = update.effective_user
   time = timezone.now()
   db_user = await TelegramUser.objects.aget(chat_id=user.id)
 
-  await TelegramUser.objects.filter(chat_id=user.id).aupdate(balance=(db_user.balance+amount))
-
+  await TelegramUser.objects.filter(chat_id=user.id).aupdate(balance=F('balance')+amount)
   new_transaction = Transaction(user_id=user.id, user_name=user.name, type="ADD", date=time, amount=amount)
   await new_transaction.asave()
-
 
   db_user = await TelegramUser.objects.aget(chat_id=user.id)
   await update.message.reply_text(
@@ -273,12 +267,12 @@ if __name__ == '__main__':
     allow_reentry=True,
   )
 
-  # commands
   app.add_handler(CommandHandler('start', start_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('help', help_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('prices', prices_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('register', register_command, filters.ChatType.PRIVATE))
   app.add_handler(CommandHandler('store', store, filters.ChatType.PRIVATE))
+
   
   app.add_handler(CallbackQueryHandler(button_response))
   
@@ -286,8 +280,5 @@ if __name__ == '__main__':
   app.add_handler(conv_handler)
   app.add_handler(undo_handler)
 
-
-  # messages
-  # app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
   app.run_polling()
