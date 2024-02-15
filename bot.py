@@ -45,7 +45,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "/store\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
     "/balance\nView and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
     "/undo\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
-    ).format('https://qr.mobilepay.fi/box/9bb325e0-ac14-472e-b9dc-deedb170af7b/pay-in'), parse_mode="MARKDOWN", disable_web_page_preview=True)
+    ).format('https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
 
 
 async def is_registered(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -181,8 +181,11 @@ async def add_money(update: Update, context:ContextTypes.DEFAULT_TYPE):
 
   db_user = await TelegramUser.objects.aget(chat_id=user.id)
   await update.message.reply_text(
-    "Adding funds succeeded, Your new balance is: {:.2f}€.".format(db_user.balance), 
-    reply_markup=ReplyKeyboardRemove()
+    "Adding funds succeeded, Your new balance is: {:.2f}€.\n\n" 
+    "Direct MobilePay link: [OPEN](https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903&amount={}&comment=ASki%20piikki&lock=1)".format(
+      db_user.balance, amount
+      ), 
+    reply_markup=ReplyKeyboardRemove(), parse_mode='MARKDOWN', disable_web_page_preview=True
   )
   print("Money added")
   return ConversationHandler.END
