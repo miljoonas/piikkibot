@@ -42,7 +42,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "*/store*\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
     "*/balance*\n View and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
     "*/undo*\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
-    ).format('https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
+    ).format('https://mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -53,7 +53,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "*/store*\n With this command you can buy items from the store. When you select a product it's price is deducted from your account balance\n\n"
     "*/balance*\n View and modify your account balance, remember to pay to *MobilePay* [94903]({}) the amount you have added to your balance.\n\n"
     "*/undo*\n If you make a mistake this command undoes your last transaction. This can be used consecutively many times if needed."
-    ).format('https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
+    ).format('https://mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903'), parse_mode="MARKDOWN", disable_web_page_preview=True)
 
 async def termsofservice(update: Update, context: ContextTypes.DEFAULT_TYPE):
   await update.message.reply_text((TOS.terms_of_service), parse_mode="MARKDOWN")
@@ -175,6 +175,9 @@ async def add_money(update: Update, context:ContextTypes.DEFAULT_TYPE):
   amount = 0
   try:
     amount = decimal.Decimal(update.message.text.replace(",", "."))
+    if amount == 0:
+      await update.message.reply_text("No money added, operation cancelled")
+      return ConversationHandler.END
     if amount < 0 or amount > 1000:
       raise ValueError
   except ValueError:
@@ -193,9 +196,11 @@ async def add_money(update: Update, context:ContextTypes.DEFAULT_TYPE):
 
   db_user = await TelegramUser.objects.aget(chat_id=user.id)
   await update.message.reply_text(
-    "Adding funds succeeded, Your new balance is: {:.2f}€.\n\n" 
-    "Direct MobilePay link: [OPEN](https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903&amount={}&comment=ASki%20piikki&lock=1)".format(
-      db_user.balance, amount
+    "Successfully added *{}€*, Your new balance is: *{:.2f}€*.\n\n" 
+    "MobilePay link: [CLICK HERE](https://qr.mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903&amount={}&comment=ASki%20piikki&lock=1)"
+    " | ([alternative link](https://mobilepay.fi/Yrityksille/Maksulinkki/maksulinkki-vastaus?phone=94903&amount={}&comment=ASki%20piikki&lock=1))"
+    .format(
+      amount, db_user.balance, amount, amount
       ), 
     reply_markup=ReplyKeyboardRemove(), parse_mode='MARKDOWN', disable_web_page_preview=True
   )
